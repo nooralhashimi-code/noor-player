@@ -1,0 +1,652 @@
+<!DOCTYPE html>
+<html lang="da"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>Noor — Universal Player</title><style>
+:root{--bg:#343b48;--surface:#2c323d;--surface2:#3e4654;--border:#4a5364;--text:#e7eaf0;--text2:#aab2c2;--text3:#818b9e;--accent:#8ab0e2;--accent2:#7cc8ba;--pink:#f06595;--green:#51cf66;--orange:#ffa94d;--red:#ff6b6b;}
+*{margin:0;padding:0;box-sizing:border-box;}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:var(--bg);color:var(--text);height:100vh;display:flex;flex-direction:column;overflow:hidden;}
+.header{padding:12px 22px;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center;flex-shrink:0;gap:10px;}
+.header h1{font-size:17px;font-weight:800;color:var(--text);white-space:nowrap;}
+#now{color:var(--text2);font-size:13.5px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1;text-align:center;}
+.pick{display:flex;gap:8px;flex-shrink:0;}
+.main{flex:1;display:flex;min-height:0;}
+.vwrap{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:12px;min-width:0;position:relative;}
+video{height:88vh;max-height:calc(100vh - 130px);width:auto;max-width:100%;border-radius:10px;background:#000;display:none;}
+video.mirror{transform:scaleX(-1);}
+.drop{border:2px dashed var(--border);border-radius:16px;padding:60px 40px;text-align:center;color:var(--text2);max-width:520px;}
+.drop.over{border-color:var(--accent);background:var(--surface);}
+.drop h2{font-size:17px;color:var(--text);margin-bottom:8px;}
+.drop p{font-size:13px;margin-bottom:16px;color:var(--text3);}
+.cc{position:absolute;bottom:64px;left:50%;transform:translateX(-50%);background:rgba(0,0,0,.75);color:#fff;font-size:17px;padding:6px 14px;border-radius:8px;max-width:80%;text-align:center;display:none;cursor:grab;user-select:none;}
+.cc:active{cursor:grabbing;}
+.cc.on{display:block;}
+.toast{position:absolute;top:18px;left:50%;transform:translateX(-50%);background:var(--surface2);border:1px solid var(--border);color:var(--text);font-size:13px;padding:8px 16px;border-radius:10px;display:none;z-index:5;box-shadow:0 6px 18px rgba(0,0,0,.4);}
+.toast button{background:none;border:none;color:var(--accent);font-size:13px;cursor:pointer;margin-left:10px;font-weight:600;}
+.bar{display:flex;gap:8px;align-items:center;padding:8px 0 0;flex-wrap:wrap;justify-content:center;}
+.btn{background:var(--surface);border:1px solid var(--border);border-radius:7px;color:var(--text2);font-size:12px;font-weight:600;padding:6px 12px;cursor:pointer;transition:all .15s;}
+.btn:hover{border-color:var(--accent);color:var(--text);}
+.btn.active{background:var(--accent);color:#fff;border-color:var(--accent);}
+.btn.ab{border-color:var(--orange);}
+.side{width:400px;border-left:1px solid var(--border);background:var(--surface);display:flex;flex-direction:column;flex-shrink:0;}
+.tabs{display:flex;border-bottom:1px solid var(--border);flex-shrink:0;}
+.tab{flex:1 1 0;min-width:0;text-align:center;padding:11px 2px;font-size:10.5px;font-weight:700;text-transform:uppercase;letter-spacing:.2px;color:var(--text3);cursor:pointer;border-bottom:2px solid transparent;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.tab.active{color:var(--accent);border-color:var(--accent);}
+.pane{flex:1;overflow-y:auto;display:none;}
+.pane.active{display:block;}
+.pl{display:flex;gap:9px;align-items:flex-start;padding:9px 14px;font-size:13.5px;cursor:pointer;border-bottom:1px solid rgba(74,83,100,.35);}
+.pl:hover{background:var(--surface2);}
+.pl.active{background:var(--surface2);border-left:3px solid var(--accent);padding-left:11px;}
+.pl .pn{color:var(--text3);font-size:11px;font-weight:700;min-width:22px;}
+.pl .pt{flex:1;line-height:1.4;white-space:normal;word-break:break-word;}
+.pl .ps{color:var(--accent2);font-size:10px;font-weight:700;}
+.search{padding:10px 14px;border-bottom:1px solid var(--border);}
+.search input{width:100%;background:var(--surface2);border:1px solid var(--border);border-radius:8px;color:var(--text);font-size:13px;padding:7px 12px;outline:none;}
+.search input:focus{border-color:var(--accent);}
+.tr{display:flex;gap:8px;padding:5px 14px;font-size:13.5px;cursor:pointer;line-height:1.5;}
+.tr:hover{background:var(--surface2);}
+.tr.active{background:var(--surface2);border-left:3px solid var(--accent2);padding-left:11px;}
+.tr .tt{color:var(--text3);font-variant-numeric:tabular-nums;min-width:38px;flex-shrink:0;}
+.bm{display:flex;gap:9px;align-items:center;padding:9px 14px;font-size:14px;cursor:pointer;border-bottom:1px solid rgba(74,83,100,.35);}
+.bm:hover{background:var(--surface2);}
+.bm .bt{color:var(--accent2);font-weight:700;font-variant-numeric:tabular-nums;min-width:40px;}
+.bm .bx{margin-left:auto;color:var(--text3);padding:2px 8px;border-radius:6px;}
+.bm .bx:hover{color:var(--red);background:var(--surface2);}
+.sec2{display:flex;gap:10px;align-items:flex-start;padding:12px 16px 10px;cursor:pointer;}
+.sec2+.sec2{border-top:1px solid var(--border);}
+.sec2:hover{background:var(--surface2);}
+.sec2 .st2{color:var(--text3);font-size:12px;font-weight:700;min-width:44px;font-variant-numeric:tabular-nums;padding-top:3px;}
+.sec2 .stt2{font-size:14.5px;font-weight:700;line-height:1.35;color:var(--accent);}
+.ntool{display:flex;gap:6px;padding:10px 12px;border-bottom:1px solid var(--border);flex-wrap:wrap;}
+.nform{padding:10px 14px;border-bottom:1px solid var(--border);background:var(--surface2);}
+.nform textarea{width:100%;background:var(--bg);border:1px solid var(--border);border-radius:8px;color:var(--text);font-size:14.5px;padding:8px 10px;outline:none;resize:vertical;font-family:inherit;}
+.nform textarea:focus{border-color:var(--accent);}
+.nts{font-size:11px;font-weight:700;color:var(--accent2);margin-bottom:5px;}
+.note{padding:9px 14px;border-bottom:1px solid rgba(74,83,100,.35);font-size:14px;}
+.note .nh{display:flex;gap:8px;align-items:center;margin-bottom:2px;}
+.note .nt{color:var(--accent2);font-weight:700;font-size:12px;cursor:pointer;font-variant-numeric:tabular-nums;}
+.note .nt:hover{text-decoration:underline;}
+.note .nx{margin-left:auto;color:var(--text3);cursor:pointer;padding:0 6px;}
+.note .nx:hover{color:var(--red);}
+.note .nb{color:var(--text);line-height:1.45;white-space:pre-wrap;}
+.nfhead{padding:12px 14px 6px;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.6px;color:var(--text3);border-top:1px solid var(--border);}
+.md{padding:14px 18px 22px;font-size:15px;line-height:1.68;color:var(--text);background:var(--surface);border:1px solid var(--border);border-radius:12px;margin:10px 12px 18px;}
+.md h1{font-size:19px;margin:14px 0 8px;}.md h2{font-size:16.5px;margin:18px 0 7px;color:var(--accent);padding-top:10px;border-top:1px solid var(--border);}.md h2:first-of-type{border-top:none;padding-top:0;}
+.md h3,.md h4{font-size:15px;margin:12px 0 5px;color:var(--accent2);}
+.md p{margin:8px 0;}.md ul{margin:8px 0 8px 20px;}.md li{margin:5px 0;}
+.md code{background:var(--surface2);padding:1px 5px;border-radius:4px;font-size:12px;}
+.md .ts{color:var(--accent);font-weight:700;cursor:pointer;font-variant-numeric:tabular-nums;}
+.md .ts:hover{text-decoration:underline;}
+.empty{color:var(--text3);font-size:13px;text-align:center;padding:20px;font-style:italic;}
+::-webkit-scrollbar{width:6px;}::-webkit-scrollbar-thumb{background:var(--border);border-radius:3px;}
+@media(max-width:900px){.main{flex-direction:column;overflow-y:auto;}body{overflow:auto;height:auto;}video{height:auto;width:100%;max-height:60vh;}.side{width:100%;border-left:none;border-top:1px solid var(--border);}.pane{max-height:50vh;}}
+</style></head><body>
+<div class="header">
+  <h1>Universal Player</h1><span id="now">Ingen video indlæst</span>
+  <div class="pick">
+    <button class="btn" id="reopen" style="display:none;border-color:var(--accent2);" onclick="reopenDir()"></button>
+    <button class="btn" onclick="pickDir()">📁 Vælg mappe</button>
+    <button class="btn" onclick="document.getElementById('ffil').click()">🎬 Vælg video(er)</button>
+  </div>
+  <input type="file" id="fdir" webkitdirectory multiple style="display:none">
+  <input type="file" id="ffil" multiple accept="video/*,.srt" style="display:none">
+</div>
+<div class="main">
+  <div class="vwrap" id="vwrap">
+    <div class="drop" id="drop"><h2>Træk en video eller en hel mappe hertil</h2>
+      <p>— eller brug knapperne øverst. Vælger du en mappe, bliver alle dens videoer til playlisten (som i IINA). SRT-filer med samme navn giver automatisk undertekster og transkript.</p>
+      <button class="btn" id="reopen2" style="display:none;border-color:var(--accent2);" onclick="reopenDir()"></button>
+      <div id="dirlist" style="display:flex;flex-wrap:wrap;gap:8px;justify-content:center;margin:12px 0;"></div>
+      <button class="btn" onclick="pickDir()">📁 Vælg mappe</button>
+      <button class="btn" onclick="document.getElementById('ffil').click()">🎬 Vælg video(er)</button>
+    </div>
+    <video id="v" controls playsinline></video>
+    <div class="cc" id="cc"></div>
+    <div class="toast" id="toast"></div>
+    <div class="bar" id="bar" style="display:none;">
+      <button class="btn sp" onclick="spd(0.5,this)">0.5×</button>
+      <button class="btn sp" onclick="spd(0.75,this)">0.75×</button>
+      <button class="btn sp active" onclick="spd(1,this)">1×</button>
+      <button class="btn sp" onclick="spd(1.5,this)">1.5×</button>
+      <button class="btn sp" onclick="spd(1.75,this)">1.75×</button>
+      <button class="btn sp" onclick="spd(2,this)">2×</button>
+      <button class="btn sp" onclick="spd(2.5,this)">2.5×</button>
+      <span style="color:var(--border);">|</span>
+      <button class="btn" id="mir" onclick="mirror()">🪞 Spejl</button>
+      <button class="btn" id="ccb" onclick="ccT()">💬 CC</button>
+      <button class="btn" onclick="ccSize(-2)">CC A−</button>
+      <button class="btn" onclick="ccSize(2)">CC A+</button>
+      <span style="color:var(--border);">|</span>
+      <button class="btn" onclick="addBm()">🔖 Bogmærke</button>
+      <button class="btn" onclick="saveLoop()">💾 Gem loop</button>
+      <span style="color:var(--border);">|</span>
+      <button class="btn ab" id="ba" onclick="setA()">A: –</button>
+      <button class="btn ab" id="bb" onclick="setB()">B: –</button>
+      <button class="btn" onclick="clearAB()">✕ loop</button>
+    </div>
+    <div class="bar" id="bar2" style="display:none;">
+      <button class="btn" onclick="if(cur>0)play(cur-1);else toast('Første video i playlisten')">⏮ Forrige</button>
+      <button class="btn" onclick="if(cur>=0&&cur<playlist.length-1)play(cur+1);else toast('Sidste video i playlisten')">⏭ Næste</button>
+      <button class="btn active" id="an" onclick="autoNext=!autoNext;this.classList.toggle('active',autoNext)">⏭ Auto-næste</button>
+      <button class="btn" id="syncb" onclick="syncClick()" title="Del bogmærker/noter/position mellem dine Macs via en fil i mappen (kræver Chrome)">🔄 Sync</button>
+    </div>
+  </div>
+  <div class="side">
+    <div class="tabs"><div class="tab active" onclick="tab(0,this)">Playliste</div><div class="tab" onclick="tab(1,this)">Sektioner</div><div class="tab" onclick="tab(2,this)">Transkript</div><div class="tab" onclick="tab(3,this)">Bogmærker</div><div class="tab" onclick="tab(4,this)">Noter</div></div>
+    <div class="pane active" id="p0"><div id="pls"></div><div class="empty" id="ple">Playlisten fyldes, når du vælger en mappe eller flere videoer</div></div>
+    <div class="pane" id="psec"><div id="secs"></div><div class="empty" id="sece">Ingen sektioner — videoen er ikke bearbejdet endnu.<br>Sektioner udledes automatisk af tidsstemplede overskrifter i en notefil (## Emne 12:34) — eller sig "lav kapitler til [video]" i Claude for den fulde bearbejdning.</div></div>
+    <div class="pane" id="p1"><div class="search"><input id="q" placeholder="Søg i transkriptet…" oninput="filt()"></div><div id="trs"></div><div class="empty" id="tre">Intet transkript — læg en .srt med samme filnavn i mappen</div></div>
+    <div class="pane" id="p2"><div id="bms"></div><div class="empty" id="bme">Ingen bogmærker eller loops for denne video endnu</div></div>
+    <div class="pane" id="p3">
+      <div class="ntool">
+        <button class="btn" onclick="addNote()">✏️ Ny note (N)</button>
+        <button class="btn" onclick="document.getElementById('fnote').click()">📄 Åbn notefil</button>
+        <button class="btn" onclick="exportNotes()">⬇ Eksportér</button>
+        <input type="file" id="fnote" accept=".md,.txt,.markdown" style="display:none">
+      </div>
+      <div class="nform" id="nform" style="display:none;">
+        <div class="nts" id="nts"></div>
+        <textarea id="ntxt" rows="3" placeholder="Skriv din note…"></textarea>
+        <div style="display:flex;gap:8px;margin-top:6px;"><button class="btn" onclick="saveNote()">Gem</button><button class="btn" onclick="cancelNote()">Annullér</button></div>
+      </div>
+      <div id="mynotes"></div>
+      <div class="empty" id="nne">Ingen egne noter endnu — tryk ✏️ eller tast N ved et vigtigt øjeblik</div>
+      <div class="nfhead" id="nfhead" style="display:none;"></div>
+      <div class="md" id="notefile"></div>
+    </div>
+  </div>
+</div>
+<script>
+var v=document.getElementById('v'),cc=document.getElementById('cc');
+var VIDEXT=['mp4','m4v','mov','webm','ogv'];
+var playlist=[],srtMap={},notesMap={},cur=-1,SUBS=[],objURL=null,autoNext=true,pendingT=null;
+var A=null,B=null,ccOn=false,st={pos:0,bms:[],loops:[]},KEY=null,lastSave=0,lastTr=-1;
+
+function base(n){return n.replace(/\.[^.]+$/,'').toLowerCase();}
+// ── Webtilstand (2026-09-26): kilder som links/tekst i stedet for File-objekter ──
+// Playeren kan åbnes fra Bogreolen (sky-artefakt) med #bro=1: den melder sig klar til
+// åbneren (postMessage), får playlisten som navne, og beder om link + SRT + notefil
+// pr. video, når den afspilles (ét privat Dropbox-link pr. video, der faktisk ses).
+// Virtuelle filer: video {name,remote:true,url}, tekst {name,text}. Lokal brug er uændret.
+var REMOTE=false,remoteWait=null;
+function readText(f){if(f&&typeof f.text==='string')return Promise.resolve(f.text);if(f&&typeof f.text==='function')return f.text();return new Promise(function(res){var r=new FileReader();r.onload=function(){res(r.result)};r.readAsText(f);});}
+function ext(n){var m=n.match(/\.([^.]+)$/);return m?m[1].toLowerCase():'';}
+function fmt(s){return ('0'+Math.floor(s/60)).slice(-2)+':'+('0'+Math.floor(s%60)).slice(-2);}
+
+// ── Sidst afspillede video pr. mappe (tilføjet 2026-08-19) ──
+// Positionen INDE i en video har altid været gemt (rp::<filnavn> → st.pos),
+// men mappen åbnede ubetinget på video 1. Her huskes hvilken video, så de to
+// dele tilsammen giver "fortsæt præcis hvor jeg slap". Nøglet pr. mappe, så
+// faner med hver sin playliste ikke overskriver hinanden.
+function mappeNavn(){try{return hashName()||localStorage.getItem('rp-lastdir')||'';}catch(e){return '';}}
+function huskSidsteFil(n){try{var m=mappeNavn();if(m&&n)localStorage.setItem('rp-lastfile::'+m,n);}catch(e){}}
+function sidsteFil(){try{var m=mappeNavn();return m?localStorage.getItem('rp-lastfile::'+m):null;}catch(e){return null;}}
+
+// ── Fil-indlæsning ──
+function ingest(files){
+  var vids=[],newSrt={},newNotes={};
+  files.forEach(function(f){
+    var e=ext(f.name);
+    if(VIDEXT.indexOf(e)>=0)vids.push(f);
+    else if(e==='srt')newSrt[base(f.name)]=f;
+    else if(e==='md'||e==='markdown'){var k=base(f.name).replace(/\.notes$/,'');(newNotes[k]=newNotes[k]||[]).push(f);}
+  });
+  if(vids.length){
+    playlist=vids.sort(function(a,b){return a.name.localeCompare(b.name,undefined,{numeric:true})});
+    var rp=vids[0].webkitRelativePath;if(rp&&rp.indexOf('/')>0)setTabTitle(rp.split('/')[0]);
+    srtMap=newSrt;notesMap=newNotes;renderPl();
+    var sidste=sidsteFil(),start=0;
+    if(sidste){for(var si=0;si<playlist.length;si++){if(playlist[si].name===sidste){start=si;break;}}}
+    play(start);
+  }else if((Object.keys(newSrt).length||Object.keys(newNotes).length)&&cur>=0){
+    Object.assign(srtMap,newSrt);
+    for(var k2 in newNotes){notesMap[k2]=(notesMap[k2]||[]).concat(newNotes[k2]);}
+    loadSrt(playlist[cur]);loadNotes(playlist[cur]);toast('Sidefiler tilføjet');
+  }else{toast('Ingen videofiler fundet');}
+}
+document.getElementById('fdir').addEventListener('change',function(){ingest([].slice.call(this.files));this.value='';});
+document.getElementById('ffil').addEventListener('change',function(){ingest([].slice.call(this.files));this.value='';});
+
+// Træk-og-slip (inkl. mapper via webkitGetAsEntry)
+var wrap=document.getElementById('vwrap'),drop=document.getElementById('drop');
+['dragover','dragenter'].forEach(function(ev){wrap.addEventListener(ev,function(e){e.preventDefault();drop.classList.add('over');});});
+['dragleave','drop'].forEach(function(ev){wrap.addEventListener(ev,function(e){if(ev==='drop')e.preventDefault();drop.classList.remove('over');});});
+wrap.addEventListener('drop',function(e){
+  e.preventDefault();
+  var items=[].slice.call(e.dataTransfer.items||[]);
+  var entries=items.map(function(i){return i.webkitGetAsEntry?i.webkitGetAsEntry():null}).filter(Boolean);
+  if(!entries.length){ingest([].slice.call(e.dataTransfer.files));return;}
+  var out=[],pending=0;
+  function walk(en,depth){
+    if(en.isFile){pending++;en.file(function(f){out.push(f);if(--pending===0)ingest(out);});}
+    else if(en.isDirectory&&depth<3){pending++;en.createReader().readEntries(function(es){es.forEach(function(c){walk(c,depth+1)});if(--pending===0)ingest(out);});}
+  }
+  entries.forEach(function(en){walk(en,0)});
+});
+
+// ── Afspilning ──
+function play(i){
+  if(i<0||i>=playlist.length)return;
+  saveNow();flushSync();
+  cur=i;var f=playlist[i];
+  if(f.remote&&!f.url){renderPl();document.getElementById('now').textContent=f.name;toast('Henter link fra Dropbox …');remoteWait=f.name;try{window.opener.postMessage({type:'rp-need',name:f.name},'*');}catch(e){toast('Ingen forbindelse til Bogreolen — åbn videoen derfra igen');}return;}
+  if(objURL){URL.revokeObjectURL(objURL);objURL=null;}
+  if(f.remote){v.src=f.url;}else{objURL=URL.createObjectURL(f);v.src=objURL;}v.style.display='block';drop.style.display='none';document.getElementById('bar').style.display='flex';document.getElementById('bar2').style.display='flex';
+  document.getElementById('now').textContent=f.name;
+  huskSidsteFil(f.name);
+  KEY='rp::'+f.name;st=load();renderBms();renderNotes();cancelNote();clearAB();
+  applySync(f.name);
+  loadSrt(f);loadNotes(f);renderPl();
+  v.play();
+}
+function loadSrt(f){
+  SUBS=[];renderTr();
+  var s=srtMap[base(f.name)];
+  if(!s)return;
+  readText(s).then(function(txt){
+    var subs=[];
+    txt.split(/\n\s*\n/).forEach(function(b){
+      var L=b.trim().split('\n');
+      if(L.length>=3){
+        var m=L[1].match(/(\d\d):(\d\d):(\d\d)[,.](\d+)\s*-->\s*(\d\d):(\d\d):(\d\d)/);
+        if(m)subs.push({s:+m[1]*3600+ +m[2]*60+ +m[3]+ +m[4]/1000,e:+m[5]*3600+ +m[6]*60+ +m[7],t:L.slice(2).join(' ').trim()});
+      }
+    });
+    SUBS=subs;renderTr();
+  });
+}
+function renderPl(){
+  var w=document.getElementById('pls');w.innerHTML='';
+  playlist.forEach(function(f,i){
+    var d=document.createElement('div');d.className='pl'+(i===cur?' active':'');
+    d.innerHTML='<span class="pn">'+('0'+(i+1)).slice(-2)+'</span><span class="pt">'+f.name.replace(/</g,'&lt;')+'</span>'+(srtMap[base(f.name)]?'<span class="ps">CC</span>':'');
+    d.onclick=function(){play(i)};
+    w.appendChild(d);
+  });
+  document.getElementById('ple').style.display=playlist.length?'none':'block';
+}
+function renderTr(){
+  var w=document.getElementById('trs');w.innerHTML='';lastTr=-1;
+  SUBS.forEach(function(s,i){
+    var d=document.createElement('div');d.className='tr';d.id='tr'+i;
+    d.innerHTML='<span class="tt">'+fmt(s.s)+'</span><span>'+s.t.replace(/</g,'&lt;')+'</span>';
+    d.onclick=function(){seek(s.s)};w.appendChild(d);
+  });
+  document.getElementById('tre').style.display=SUBS.length?'none':'block';
+}
+function filt(){var q=document.getElementById('q').value.toLowerCase();SUBS.forEach(function(s,i){document.getElementById('tr'+i).style.display=(!q||s.t.toLowerCase().includes(q))?'':'none';});}
+
+// ── Kontroller ──
+function seek(s){v.currentTime=s;v.play();}
+function spd(r,el){v.playbackRate=r;document.querySelectorAll('.sp').forEach(function(b){b.classList.toggle('active',b===el);});}
+function mirror(){v.classList.toggle('mirror');document.getElementById('mir').classList.toggle('active');}
+function ccT(){ccOn=!ccOn;cc.classList.toggle('on',ccOn);document.getElementById('ccb').classList.toggle('active',ccOn);}
+function setA(){A=v.currentTime;document.getElementById('ba').textContent='A: '+fmt(A);document.getElementById('ba').classList.add('active');}
+function setB(){B=v.currentTime;document.getElementById('bb').textContent='B: '+fmt(B);document.getElementById('bb').classList.add('active');}
+function clearAB(){A=null;B=null;document.getElementById('ba').textContent='A: –';document.getElementById('bb').textContent='B: –';document.getElementById('ba').classList.remove('active');document.getElementById('bb').classList.remove('active');}
+
+// ── Persistens pr. video ──
+function load(){try{return Object.assign({pos:0,bms:[],loops:[],notes:[]},JSON.parse(localStorage.getItem(KEY))||{})}catch(e){return{pos:0,bms:[],loops:[],notes:[]}}}
+function save(){if(!KEY)return;st.updated=Date.now();try{localStorage.setItem(KEY,JSON.stringify(st))}catch(e){}scheduleSync();}
+function saveNow(){if(cur>=0){st.pos=v.currentTime;save();}}
+// Elementvis fletning (union + tombstones) — intet kan gå tabt ved sync
+function mkey(o){return o.a!==undefined?('L|'+o.a+'|'+o.b+'|'+(o.l||'')):o.txt!==undefined?('N|'+o.t+'|'+o.txt):('B|'+o.t+'|'+(o.l||''));}
+function addDel(o){(st.del=st.del||[]).push({k:mkey(o),at:Date.now()});}
+function rmDel(o){var k=mkey(o);st.del=(st.del||[]).filter(function(d){return d.k!==k});}
+function mergeRec(a,b){
+  a=a||{};b=b||{};
+  var dels={};(a.del||[]).concat(b.del||[]).forEach(function(d){if(dels[d.k]===undefined||d.at>dels[d.k])dels[d.k]=d.at;});
+  function uni(x,y){var seen={},out=[];(x||[]).concat(y||[]).forEach(function(o){var k=mkey(o);if(seen[k])return;if(dels[k]!==undefined&&dels[k]>(o.at||0))return;seen[k]=1;out.push(o);});return out;}
+  var newer=(b.updated||0)>(a.updated||0)?b:a;
+  return {pos:newer.pos||0,updated:Math.max(a.updated||0,b.updated||0),
+    bms:uni(a.bms,b.bms),loops:uni(a.loops,b.loops),notes:uni(a.notes,b.notes),
+    del:Object.keys(dels).map(function(k){return {k:k,at:dels[k]}})};
+}
+function renderBms(){
+  var w=document.getElementById('bms');w.innerHTML='';
+  st.loops.sort(function(x,y){return x.a-y.a}).forEach(function(b,i){
+    var d=document.createElement('div');d.className='bm';
+    d.innerHTML='<span class="bt" style="min-width:96px;color:var(--orange);">🔁 '+fmt(b.a)+'–'+fmt(b.b)+'</span><span>'+b.l.replace(/</g,'&lt;')+'</span><span class="bx">✕</span>';
+    d.onclick=function(){A=b.a;B=b.b;setAB();seek(b.a);};
+    d.querySelector('.bx').onclick=function(e){e.stopPropagation();addDel(b);st.loops.splice(i,1);save();renderBms()};
+    w.appendChild(d);
+  });
+  st.bms.sort(function(a,b){return a.t-b.t}).forEach(function(b,i){
+    var d=document.createElement('div');d.className='bm';
+    d.innerHTML='<span class="bt">'+fmt(b.t)+'</span><span>'+b.l.replace(/</g,'&lt;')+'</span><span class="bx">✕</span>';
+    d.onclick=function(){seek(b.t)};
+    d.querySelector('.bx').onclick=function(e){e.stopPropagation();addDel(b);st.bms.splice(i,1);save();renderBms()};
+    w.appendChild(d);
+  });
+  document.getElementById('bme').style.display=(st.bms.length||st.loops.length)?'none':'block';
+}
+function setAB(){var ba=document.getElementById('ba'),bb=document.getElementById('bb');ba.textContent='A: '+fmt(A);bb.textContent='B: '+fmt(B);ba.classList.add('active');bb.classList.add('active');}
+function addBm(){if(cur<0)return;var t=v.currentTime;var l=prompt('Navn på bogmærke:',fmt(t));if(l===null)return;var o={t:Math.round(t*10)/10,l:l||fmt(t),at:Date.now()};rmDel(o);st.bms.push(o);save();renderBms();flushSync();toast('🔖 Bogmærke gemt: '+fmt(t));}
+function saveLoop(){if(A===null||B===null||B<=A){toast('Sæt A og B først (A skal ligge før B)');return;}var l=prompt('Navn på loop:',fmt(A)+'–'+fmt(B));if(l===null)return;var o={a:Math.round(A*10)/10,b:Math.round(B*10)/10,l:l||fmt(A)+'–'+fmt(B),at:Date.now()};rmDel(o);st.loops.push(o);save();renderBms();flushSync();toast('💾 Loop gemt');}
+
+// ── CC-indstillinger (globale) ──
+var CCK='rp-cc',ccp={};try{ccp=JSON.parse(localStorage.getItem(CCK))||{}}catch(e){}
+if(ccp.size)cc.style.fontSize=ccp.size+'px';if(ccp.bottom!==undefined)cc.style.bottom=ccp.bottom+'px';
+function ccSave(){try{localStorage.setItem(CCK,JSON.stringify(ccp))}catch(e){}}
+function ccSize(d){var s=parseInt(getComputedStyle(cc).fontSize)||17;s=Math.max(11,Math.min(44,s+d));cc.style.fontSize=s+'px';ccp.size=s;ccSave();toast('CC-størrelse: '+s+'px');}
+var dragY=null,startB=null;
+cc.addEventListener('mousedown',function(e){dragY=e.clientY;startB=parseInt(getComputedStyle(cc).bottom)||64;e.preventDefault();});
+document.addEventListener('mousemove',function(e){if(dragY===null)return;var nb=startB+(dragY-e.clientY);nb=Math.max(8,Math.min(window.innerHeight-140,nb));cc.style.bottom=nb+'px';});
+document.addEventListener('mouseup',function(){if(dragY!==null){ccp.bottom=parseInt(getComputedStyle(cc).bottom)||64;ccSave();}dragY=null;});
+
+// ── Toast ──
+var toastTimer=null;
+function toast(msg,btnLabel,btnFn){var t=document.getElementById('toast');t.innerHTML=msg+(btnLabel?'<button id="tbtn">'+btnLabel+'</button>':'');t.style.display='block';if(btnLabel)document.getElementById('tbtn').onclick=function(){btnFn();t.style.display='none'};clearTimeout(toastTimer);toastTimer=setTimeout(function(){t.style.display='none'},6000);}
+
+// ── Tastatur & scroll ──
+document.addEventListener('keydown',function(e){
+  if(/INPUT|TEXTAREA/.test(document.activeElement.tagName))return;
+  if(e.key==='ArrowRight'){e.preventDefault();e.stopPropagation();v.currentTime=Math.min(v.duration||1e9,v.currentTime+3);}
+  else if(e.key==='ArrowLeft'){e.preventDefault();e.stopPropagation();v.currentTime=Math.max(0,v.currentTime-3);}
+  else if(e.key===' '||e.code==='Space'){if(cur<0)return;e.preventDefault();e.stopPropagation();if(v.paused)v.play();else v.pause();}
+  else if(e.key==='b')addBm();
+  else if(e.key==='n')addNote();
+},true);
+wrap.addEventListener('wheel',function(e){
+  if(cur<0)return;e.preventDefault();
+  var step=Math.sign(e.deltaY)*Math.min(Math.abs(e.deltaY)*0.02,2);
+  v.currentTime=Math.max(0,Math.min(v.duration||1e9,v.currentTime+step));
+},{passive:false});
+
+// ── Afspilnings-events ──
+v.addEventListener('loadedmetadata',function(){
+  if(st.pos&&st.pos>10&&st.pos<v.duration-15){v.currentTime=st.pos;toast('Fortsætter fra '+fmt(st.pos),'Start forfra',function(){v.currentTime=0});}
+});
+v.addEventListener('ended',function(){saveNow();if(autoNext&&cur<playlist.length-1)play(cur+1);});
+v.addEventListener('pause',saveNow);
+window.addEventListener('beforeunload',saveNow);
+v.addEventListener('timeupdate',function(){
+  if(Math.abs(v.currentTime-lastSave)>3){lastSave=v.currentTime;st.pos=v.currentTime;save();}
+  if(A!==null&&B!==null&&B>A&&v.currentTime>=B){v.currentTime=A;}
+  var t=v.currentTime,lo=0,hi=SUBS.length-1,idx=-1;
+  while(lo<=hi){var m=(lo+hi)>>1;if(SUBS[m].s<=t){idx=m;lo=m+1;}else hi=m-1;}
+  if(ccOn&&idx>=0&&t<=SUBS[idx].e+0.5){cc.textContent=SUBS[idx].t;}else if(ccOn){cc.textContent='';}
+  if(idx!==lastTr&&idx>=0){var p=document.getElementById('tr'+lastTr);if(p)p.classList.remove('active');var c=document.getElementById('tr'+idx);if(c){c.classList.add('active');if(document.getElementById('p1').classList.contains('active'))c.scrollIntoView({block:'center',behavior:'smooth'});}lastTr=idx;}
+});
+// ── Tidsstemplede noter ──
+function renderNotes(){
+  var w=document.getElementById('mynotes');w.innerHTML='';
+  (st.notes||[]).sort(function(a,b){return a.t-b.t}).forEach(function(n,i){
+    var el=document.createElement('div');el.className='note';
+    el.innerHTML='<div class="nh"><span class="nt">'+fmt(n.t)+'</span><span class="nx" title="Slet">✕</span></div><div class="nb"></div>';
+    el.querySelector('.nb').textContent=n.txt;
+    el.querySelector('.nt').onclick=function(){seek(n.t)};
+    el.querySelector('.nx').onclick=function(){addDel(n);st.notes.splice(i,1);save();renderNotes()};
+    w.appendChild(el);
+  });
+  document.getElementById('nne').style.display=(st.notes&&st.notes.length)?'none':'block';
+}
+function addNote(){
+  if(cur<0)return;
+  v.pause();pendingT=v.currentTime;
+  document.getElementById('nts').textContent='Note ved '+fmt(pendingT);
+  document.getElementById('nform').style.display='block';
+  document.querySelectorAll('.tab')[4].click();
+  document.getElementById('ntxt').focus();
+}
+function saveNote(){
+  var t=document.getElementById('ntxt').value.trim();
+  if(t){var o={t:Math.round(pendingT*10)/10,txt:t,at:Date.now()};rmDel(o);st.notes.push(o);save();renderNotes();flushSync();toast('✏️ Note gemt ved '+fmt(pendingT));}
+  cancelNote();
+}
+function cancelNote(){document.getElementById('nform').style.display='none';document.getElementById('ntxt').value='';pendingT=null;}
+function exportNotes(){
+  if(cur<0||!(st.notes&&st.notes.length)){toast('Ingen egne noter at eksportere');return;}
+  var name=playlist[cur].name;
+  var md='# Noter — '+name+'\n\n';
+  st.notes.sort(function(a,b){return a.t-b.t}).forEach(function(n){md+='- **['+fmt(n.t)+']** '+n.txt.replace(/\n/g,'\n  ')+'\n';});
+  var a=document.createElement('a');
+  a.href=URL.createObjectURL(new Blob([md],{type:'text/markdown'}));
+  a.download=name.replace(/\.[^.]+$/,'')+'.notes.md';
+  a.click();
+  toast('Noter eksporteret — gem filen ved siden af videoen, så indlæses de automatisk');
+}
+// ── Notefil-visning (markdown m. klikbare tidsstempler) ──
+function mdRender(src){
+  var lines=src.split(/\r?\n/),out='',inList=false;
+  function esc(s){return s.replace(/&/g,'&amp;').replace(/</g,'&lt;');}
+  function inline(s){
+    s=esc(s);
+    s=s.replace(/\*\*([^*]+)\*\*/g,'<strong>$1</strong>');
+    s=s.replace(/`([^`]+)`/g,'<code>$1</code>');
+    s=s.replace(/\[?\b(\d{1,2}):([0-5]\d)(?::([0-5]\d))?\b\]?/g,function(m,h,mm,ss){
+      var sec=ss!==undefined?(+h*3600+ +mm*60+ +ss):(+h*60+ +mm);
+      return '<span class="ts" onclick="seek('+sec+')">'+m.replace(/[\[\]]/g,'')+'</span>';
+    });
+    return s;
+  }
+  lines.forEach(function(L){
+    var h=L.match(/^(#{1,4})\s+(.*)/);
+    var li=L.match(/^\s*[-*]\s+(.*)/);
+    if(li){if(!inList){out+='<ul>';inList=true;}out+='<li>'+inline(li[1])+'</li>';return;}
+    if(inList){out+='</ul>';inList=false;}
+    if(h){out+='<h'+h[1].length+'>'+inline(h[2])+'</h'+h[1].length+'>';}
+    else if(L.trim()){out+='<p>'+inline(L)+'</p>';}
+  });
+  if(inList)out+='</ul>';
+  return out;
+}
+function renderNoteFiles(arr){
+  var box=document.getElementById('notefile');box.innerHTML='';
+  document.getElementById('nfhead').style.display='none';
+  if(!arr.length)return;
+  // egne .notes.md først, derefter alfabetisk
+  arr=arr.slice().sort(function(a,b){
+    var an=/\.notes\.(md|txt|markdown)$/i.test(a.name)?0:1;
+    var bn=/\.notes\.(md|txt|markdown)$/i.test(b.name)?0:1;
+    return an-bn||a.name.localeCompare(b.name);
+  });
+  var texts=arr.map(function(){return null}),done=0;
+  arr.forEach(function(f,i){
+    readText(f).then(function(txt){texts[i]=txt;if(++done===arr.length){
+      arr.forEach(function(f2,j){
+        var h=document.createElement('div');h.className='nfhead';h.style.borderTop=j?'1px solid var(--border)':'none';
+        h.textContent='Notefil: '+f2.name+(j===0&&arr.length>1?' (dine noter)':'');
+        var c=document.createElement('div');c.className='md';c.innerHTML=mdRender(texts[j]||'');
+        box.appendChild(h);box.appendChild(c);
+      });
+      deriveSections();
+    }});
+  });
+}
+function deriveSections(){
+  var w=document.getElementById('secs');w.innerHTML='';
+  var hs=document.querySelectorAll('#notefile h1,#notefile h2,#notefile h3,#notefile h4');
+  var n=0;
+  hs.forEach(function(h){
+    var ts=h.querySelector('.ts');if(!ts)return;
+    var sec=parseInt((ts.getAttribute('onclick')||'').replace(/[^0-9]/g,''))||0;
+    var d2=document.createElement('div');d2.className='sec2';
+    d2.innerHTML='<span class="st2">'+fmt(sec)+'</span><span class="stt2">'+h.textContent.replace(/</g,'&lt;')+'</span>';
+    d2.onclick=function(){seek(sec)};
+    w.appendChild(d2);n++;
+  });
+  document.getElementById('sece').style.display=n?'none':'block';
+}
+function loadNotes(f){
+  document.getElementById('notefile').innerHTML='';
+  document.getElementById('nfhead').style.display='none';
+  document.getElementById('secs').innerHTML='';
+  document.getElementById('sece').style.display='block';
+  renderNoteFiles(notesMap[base(f.name)]||[]);
+}
+document.getElementById('fnote').addEventListener('change',function(){
+  if(this.files[0]&&cur>=0){var k3=base(playlist[cur].name);(notesMap[k3]=notesMap[k3]||[]).push(this.files[0]);loadNotes(playlist[cur]);}
+  this.value='';
+});
+// ── Huskede mapper — flere playlister, fane-identitet via #playliste=… (2026-08-16) ──
+// Hver fane bærer sin playliste i URL-hash'en; Chrome gendanner faner MED hash,
+// så en fanegruppe med flere playere husker hver sin mappe. Fanetitlen er KUN
+// mappenavnet (Noors ønske: lodret faneliste — den generiske del må ikke fylde).
+function idb(){return new Promise(function(res,rej){var r=indexedDB.open('rp-db',1);r.onupgradeneeded=function(){r.result.createObjectStore('h')};r.onsuccess=function(){res(r.result)};r.onerror=function(){rej(r.error)};});}
+function dirList(){try{return JSON.parse(localStorage.getItem('rp-dirs')||'[]')}catch(e){return[]}}
+function setDirList(a){try{localStorage.setItem('rp-dirs',JSON.stringify(a.slice(0,12)))}catch(e){}}
+function hashName(){var m=location.hash.match(/playliste=([^&]+)/);return m?decodeURIComponent(m[1]):null;}
+function setTabTitle(n){document.title=n||'Noor — Universal Player';}
+function markActive(n){try{history.replaceState(null,'','#playliste='+encodeURIComponent(n))}catch(e){}setTabTitle(n);try{localStorage.setItem('rp-lastdir',n)}catch(e){}var a=dirList().filter(function(x){return x!==n});a.unshift(n);setDirList(a);updateReopen();}
+async function saveHandle(h){try{var db=await idb();var s=db.transaction('h','readwrite').objectStore('h');s.put(h,'last');s.put(h,'dir::'+h.name);markActive(h.name);}catch(e){}}
+async function loadHandle(key){try{var db=await idb();return await new Promise(function(res){var g=db.transaction('h').objectStore('h').get(key||'last');g.onsuccess=function(){res(g.result)};g.onerror=function(){res(null)};});}catch(e){return null;}}
+async function handleByName(n){var h=await loadHandle('dir::'+n);if(h)return h;h=await loadHandle('last');return(h&&h.name===n)?h:null;}
+function forgetDir(n,ev){if(ev){ev.stopPropagation();ev.preventDefault();}setDirList(dirList().filter(function(x){return x!==n}));idb().then(function(db){db.transaction('h','readwrite').objectStore('h').delete('dir::'+n)}).catch(function(){});if(localStorage.getItem('rp-lastdir')===n)try{localStorage.removeItem('rp-lastdir')}catch(e){}updateReopen();}
+async function collectFiles(h,depth,out){depth=depth||0;out=out||[];if(depth>3)return out;
+  for await (var en of h.values()){
+    if(en.kind==='file'){out.push(await en.getFile());}
+    else if(en.kind==='directory'){await collectFiles(en,depth+1,out);}
+  }return out;}
+async function pickDir(){
+  if(!window.showDirectoryPicker){document.getElementById('fdir').click();return;}
+  try{var h=await showDirectoryPicker({mode:'readwrite'});await saveHandle(h);ingest(await collectFiles(h));enableSync(h,true);}
+  catch(e){/* annulleret */}
+}
+async function reopenDir(name){
+  var n=name||hashName()||localStorage.getItem('rp-lastdir');
+  var h=n?await handleByName(n):await loadHandle();
+  if(!h){toast('Ingen gemt mappe — vælg en først');return;}
+  try{
+    var perm=await h.queryPermission({mode:'readwrite'});
+    if(perm!=='granted'){perm=await h.requestPermission({mode:'readwrite'});}
+    if(perm==='granted'){markActive(h.name);ingest(await collectFiles(h));enableSync(h,true);return;}
+    perm=await h.queryPermission({mode:'read'});
+    if(perm!=='granted'){perm=await h.requestPermission({mode:'read'});}
+    if(perm!=='granted'){toast('Adgang afvist af browseren');return;}
+    markActive(h.name);ingest(await collectFiles(h));
+  }catch(e){toast('Kunne ikke genåbne mappen — vælg den igen');}
+}
+// ── Dropbox-sync via .rp-sync.json i mappen (Chrome) ──
+var dirHandle=null,syncOn=false,syncData=null,syncTimer=null,SYNCFILE='.rp-sync.json';
+function syncBtn(){var b=document.getElementById('syncb');if(!b)return;if(!window.showDirectoryPicker){b.style.display='none';return;}b.classList.toggle('active',syncOn);b.textContent=syncOn?'🔄 Sync ✓':'🔄 Sync';}
+async function readSyncFile(){
+  try{var fh=await dirHandle.getFileHandle(SYNCFILE);var f=await fh.getFile();var d=JSON.parse(await f.text());return (d&&d.videos)?d:{v:1,videos:{}};}
+  catch(e){return {v:1,videos:{}};}
+}
+async function enableSync(h,silent){
+  if(!window.showDirectoryPicker||!h)return false;
+  try{
+    var p=await h.queryPermission({mode:'readwrite'});
+    if(p!=='granted'&&!silent)p=await h.requestPermission({mode:'readwrite'});
+    if(p!=='granted'){syncBtn();return false;}
+    dirHandle=h;syncOn=true;syncBtn();
+    if(cur>=0)applySync(playlist[cur].name);
+    return true;
+  }catch(e){return false;}
+}
+async function applySync(name){
+  if(!syncOn||!dirHandle)return;
+  syncData=await readSyncFile();
+  if(cur<0||playlist[cur].name!==name)return;
+  var r=syncData.videos[name];
+  if(!r)return;
+  var before=JSON.stringify({b:st.bms,l:st.loops,n:st.notes});
+  var wasNewer=(r.updated||0)>(st.updated||0);
+  st=mergeRec(st,r);
+  try{localStorage.setItem(KEY,JSON.stringify(st))}catch(e){}
+  renderBms();renderNotes();
+  if(JSON.stringify({b:st.bms,l:st.loops,n:st.notes})!==before)toast('🔄 Flettet med sync-filen');
+  if(wasNewer&&v.duration&&st.pos>10&&st.pos<v.duration-15&&v.paused)v.currentTime=st.pos;
+}
+function scheduleSync(){if(!syncOn)return;clearTimeout(syncTimer);syncTimer=setTimeout(flushSync,1200);}
+async function flushSync(){
+  clearTimeout(syncTimer);
+  if(!syncOn||!dirHandle||cur<0)return;
+  var name=playlist[cur].name,snap=JSON.parse(JSON.stringify(st));
+  try{
+    var d=await readSyncFile();
+    d.videos[name]=mergeRec(snap,d.videos[name]);
+    var fh=await dirHandle.getFileHandle(SYNCFILE,{create:true});
+    var w=await fh.createWritable();await w.write(JSON.stringify(d));await w.close();
+    syncData=d;
+  }catch(e){}
+}
+async function syncClick(){
+  if(syncOn){toast('Sync er aktiv — tilstanden deles via '+SYNCFILE+' i mappen (følger med Dropbox)');return;}
+  var h=dirHandle||await loadHandle();
+  if(!h){toast('Vælg en mappe først (📁) — så kan sync aktiveres');return;}
+  if(await enableSync(h,false))toast('🔄 Sync aktiv — bogmærker/noter/position deles nu mellem dine Macs');
+  else toast('Adgang afvist af browseren');
+}
+v.addEventListener('pause',function(){saveNow();flushSync();});
+window.addEventListener('pagehide',function(){saveNow();flushSync();});
+syncBtn();
+function updateReopen(){
+  var hn=hashName(),n=hn||localStorage.getItem('rp-lastdir');
+  var show=(window.showDirectoryPicker&&n)?'':'none';
+  ['reopen','reopen2'].forEach(function(id){var b=document.getElementById(id);if(b){b.style.display=show;b.textContent='↩ Genåbn: '+n;b.onclick=function(){reopenDir(n)};}});
+  var w=document.getElementById('dirlist');
+  if(w){w.innerHTML='';var a=dirList();
+    if(window.showDirectoryPicker&&a.length>1){
+      var hd=document.createElement('div');hd.textContent='Mine playlister';hd.style.cssText='width:100%;font-size:12px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.5px;margin-bottom:2px;';w.appendChild(hd);
+      a.forEach(function(nm){
+        var b=document.createElement('button');b.className='btn';if(nm===hn)b.style.borderColor='var(--accent)';
+        b.appendChild(document.createTextNode('▶ '+nm));
+        var x=document.createElement('span');x.textContent='✕';x.title='Glem denne mappe';x.style.cssText='opacity:.5;margin-left:8px;cursor:pointer;';x.onclick=function(ev){forgetDir(nm,ev)};
+        b.appendChild(x);b.onclick=function(ev){if(ev.target!==x)reopenDir(nm)};
+        w.appendChild(b);
+      });
+    }}
+}
+if(hashName())setTabTitle(hashName());
+updateReopen();
+/* Auto-genåbning ved opstart (2026-08-18): husker vi en mappe, OG er
+   tilladelsen allerede givet, så åbnes den af sig selv. Beder ALDRIG om
+   tilladelse her — requestPermission kræver en brugerhandling. Ved mindste
+   tvivl gøres intet, og Genåbn-knappen står som før.
+   Baggrund: Chrome bevarer både håndtag og tilladelse for INSTALLEREDE
+   web-apps (verificeret 2026-08-18: granted efter fuld genstart, før klik) —
+   men playeren forsøgte aldrig at bruge det. */
+/* Rettet 2026-08-19 på to punkter, begge fra Noors observation "fanenavnene
+   passer ikke, de skifter fra session til session":
+   (1) KUN hash. Tidligere faldt den tilbage på 'rp-lastdir', som er ÉN
+       fælles værdi for alle faner, skrevet af den fane der senest åbnede en
+       mappe. En fane uden hash kunne derfor vise en ny playliste hver gang.
+       Uden hash gøres nu intet — "Mine playlister" står klar i tomtilstanden.
+   (2) Titlen må ikke lyve. Navnet sættes fra hash'en ved load (linjen
+       ovenfor), men lykkes åbningen ikke, mærkes titlen synligt i stedet for
+       at se ud, som om playlisten er indlæst. */
+(async function(){
+  var n=hashName(); if(!n)return;
+  function ikkeAabnet(){setTabTitle(n+' — ikke åbnet');}
+  try{
+    if(!window.showDirectoryPicker){ikkeAabnet();return;}
+    var h=await handleByName(n); if(!h){ikkeAabnet();return;}
+    var rw=await h.queryPermission({mode:'readwrite'});
+    if(rw==='granted'){markActive(h.name);ingest(await collectFiles(h));enableSync(h,true);return;}
+    var rd=await h.queryPermission({mode:'read'});
+    if(rd==='granted'){markActive(h.name);ingest(await collectFiles(h));return;}
+    ikkeAabnet();
+  }catch(e){ikkeAabnet();}
+})();
+// ── Bro til Bogreolen (webtilstand, 2026-09-26) ──
+(function(){
+  if(!/(^|[#&])bro=1(&|$)/.test(location.hash)||!window.opener)return;
+  REMOTE=true;
+  var sb=document.getElementById('syncb');if(sb)sb.style.display='none';
+  var pk=document.querySelector('.pick');if(pk)pk.style.display='none';
+  var dr=document.getElementById('drop');if(dr){dr.innerHTML='<h2>Venter på Bogreolen …</h2><p>Playlisten kommer fra den fane, der åbnede playeren. Lukker du den, kan nye videoer ikke hentes.</p>';}
+  window.addEventListener('message',function(ev){
+    if(ev.source!==window.opener)return;
+    var m=ev.data||{};
+    if(m.type==='rp-load'&&Array.isArray(m.items)){
+      playlist=m.items.map(function(it){return {name:it.name,remote:true,url:it.url||null};});
+      srtMap={};notesMap={};
+      if(m.list)setTabTitle(m.list);
+      renderPl();
+      var start=0;if(m.start){for(var i=0;i<playlist.length;i++){if(playlist[i].name===m.start){start=i;break;}}}
+      play(start);
+    }else if(m.type==='rp-file'&&m.name){
+      var idx=-1;for(var j=0;j<playlist.length;j++){if(playlist[j].name===m.name){idx=j;break;}}
+      if(idx<0)return;
+      if(m.url)playlist[idx].url=m.url;
+      var k=base(m.name);
+      if(m.srt)srtMap[k]={name:m.srtName||(k+'.srt'),text:m.srt};
+      if(Array.isArray(m.notes)&&m.notes.length)notesMap[k]=m.notes.map(function(n){return {name:n.name,text:n.text};});
+      if(m.error){toast('Bogreolen: '+m.error);remoteWait=null;return;}
+      if(remoteWait===m.name){remoteWait=null;play(idx);}
+    }
+  });
+  try{window.opener.postMessage({type:'rp-ready'},'*');}catch(e){}
+})();
+function tab(n,el){document.querySelectorAll('.tab').forEach(function(t){t.classList.remove('active');});el.classList.add('active');document.querySelectorAll('.pane').forEach(function(p,i){p.classList.toggle('active',i===n);});}
+</script></body></html>
