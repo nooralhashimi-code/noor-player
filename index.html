@@ -18,6 +18,12 @@ video.mirror{transform:scaleX(-1);}
 .drop p{font-size:13px;margin-bottom:16px;color:var(--text3);}
 .cc{position:absolute;bottom:64px;left:50%;transform:translateX(-50%);background:rgba(0,0,0,.75);color:#fff;font-size:17px;padding:6px 14px;border-radius:8px;max-width:80%;text-align:center;display:none;cursor:grab;user-select:none;}
 .cc:active{cursor:grabbing;}
+/* Navnedialog i siden (2026-09-26): prompt() svarer null i vinduer åbnet fra artefakt-sandkassen */
+.ask{display:none;position:absolute;left:50%;top:14%;transform:translateX(-50%);background:var(--surface);border:1px solid var(--accent);border-radius:12px;padding:14px 16px;z-index:20;min-width:320px;box-shadow:0 8px 30px rgba(0,0,0,.5);}
+.ask .al{font-size:12px;font-weight:700;color:var(--accent2);margin-bottom:6px;}
+.ask input{width:100%;background:var(--bg);border:1px solid var(--border);border-radius:8px;color:var(--text);font-size:14.5px;padding:8px 10px;outline:none;font-family:inherit;}
+.ask input:focus{border-color:var(--accent);}
+.ask .ab2{display:flex;gap:8px;margin-top:8px;justify-content:flex-end;}
 /* Tidslinje med hover-thumbnails (fase 5, 2026-09-26) */
 .tl{display:none;position:relative;width:var(--vw,100%);max-width:100%;height:22px;margin:6px 0 0;cursor:pointer;flex-shrink:0;}
 .tl .trk{position:absolute;left:0;right:0;top:9px;height:5px;border-radius:3px;background:var(--surface2);}
@@ -112,6 +118,7 @@ video.mirror{transform:scaleX(-1);}
     <div class="tl" id="tl"><div class="trk"></div><div class="prg" id="prg"></div><div id="mks"></div><div class="thumb" id="thumb"><canvas id="thc" width="352" height="198"></canvas><div class="tt" id="tht">00:00</div></div></div>
     <video id="pv" muted playsinline preload="metadata" style="display:none;"></video>
     <div class="cc" id="cc"></div>
+    <div class="ask" id="ask"><div class="al" id="askl"></div><input id="aski" autocomplete="off"><div class="ab2"><button class="btn" id="askok">Gem</button><button class="btn" id="askno">Annullér</button></div></div>
     <div class="toast" id="toast"></div>
     <div class="bar" id="bar" style="display:none;">
       <button class="btn sp" onclick="spd(0.5,this)">0.5×</button>
@@ -332,8 +339,16 @@ function renderBms(){
   document.getElementById('bme').style.display=(st.bms.length||st.loops.length)?'none':'block';
 }
 function setAB(){var ba=document.getElementById('ba'),bb=document.getElementById('bb');ba.textContent='A: '+fmt(A);bb.textContent='B: '+fmt(B);ba.classList.add('active');bb.classList.add('active');}
-function addBm(){if(cur<0)return;var t=v.currentTime;var l=prompt('Navn på bogmærke:',fmt(t));if(l===null)return;var o={t:Math.round(t*10)/10,l:l||fmt(t),at:Date.now()};rmDel(o);st.bms.push(o);save();renderBms();flushSync();toast('🔖 Bogmærke gemt: '+fmt(t));}
-function saveLoop(){if(A===null||B===null||B<=A){toast('Sæt A og B først (A skal ligge før B)');return;}var l=prompt('Navn på loop:',fmt(A)+'–'+fmt(B));if(l===null)return;var o={a:Math.round(A*10)/10,b:Math.round(B*10)/10,l:l||fmt(A)+'–'+fmt(B),at:Date.now()};rmDel(o);st.loops.push(o);save();renderBms();flushSync();toast('💾 Loop gemt');}
+// Navnedialog i siden — afløser prompt() (2026-09-26: et vindue åbnet fra artefakt-sandkassen
+// arver sandkassens flag, og uden allow-modals svarer prompt() null uden at vises).
+var askCb=null;
+function askName(label,def,cb){var a=document.getElementById('ask'),i=document.getElementById('aski');document.getElementById('askl').textContent=label;i.value=def||'';askCb=cb;a.style.display='block';i.focus();i.select();}
+function askDone(ok){var a=document.getElementById('ask'),i=document.getElementById('aski');a.style.display='none';var cb=askCb;askCb=null;if(cb)cb(ok?i.value:null);}
+document.getElementById('askok').onclick=function(){askDone(true)};
+document.getElementById('askno').onclick=function(){askDone(false)};
+document.getElementById('aski').addEventListener('keydown',function(e){if(e.key==='Enter'){e.preventDefault();askDone(true);}else if(e.key==='Escape'){e.preventDefault();askDone(false);}e.stopPropagation();});
+function addBm(){if(cur<0)return;var t=v.currentTime;askName('Navn på bogmærke ved '+fmt(t),fmt(t),function(l){if(l===null)return;var o={t:Math.round(t*10)/10,l:l||fmt(t),at:Date.now()};rmDel(o);st.bms.push(o);save();renderBms();flushSync();toast('🔖 Bogmærke gemt: '+fmt(t));});}
+function saveLoop(){if(A===null||B===null||B<=A){toast('Sæt A og B først (A skal ligge før B)');return;}var a0=A,b0=B;askName('Navn på loop '+fmt(a0)+'–'+fmt(b0),fmt(a0)+'–'+fmt(b0),function(l){if(l===null)return;var o={a:Math.round(a0*10)/10,b:Math.round(b0*10)/10,l:l||fmt(a0)+'–'+fmt(b0),at:Date.now()};rmDel(o);st.loops.push(o);save();renderBms();flushSync();toast('💾 Loop gemt');});}
 
 // ── CC-indstillinger (globale) ──
 var CCK='rp-cc',ccp={};try{ccp=JSON.parse(localStorage.getItem(CCK))||{}}catch(e){}
