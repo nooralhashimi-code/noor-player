@@ -96,7 +96,7 @@ video.mirror{transform:scaleX(-1);}
 @media(max-width:900px){.main{flex-direction:column;overflow-y:auto;}body{overflow:auto;height:auto;}video{height:auto;width:100%;max-height:60vh;}.side{width:100%;border-left:none;border-top:1px solid var(--border);}.pane{max-height:50vh;}}
 </style></head><body>
 <div class="header">
-  <h1>Universal Player <span id="build" style="font-size:10px;font-weight:600;color:var(--text3);margin-left:6px;" title="Byggemærke — ses i sky-udgaven, så en forældet cache kan afsløres">2026-09-26f</span></h1><span id="now">Ingen video indlæst</span>
+  <h1>Universal Player <span id="build" style="font-size:10px;font-weight:600;color:var(--text3);margin-left:6px;" title="Byggemærke — ses i sky-udgaven, så en forældet cache kan afsløres">2026-09-26g</span></h1><span id="now">Ingen video indlæst</span>
   <div class="pick">
     <button class="btn" id="reopen" style="display:none;border-color:var(--accent2);" onclick="reopenDir()"></button>
     <button class="btn" onclick="pickDir()">📁 Vælg mappe</button>
@@ -710,7 +710,9 @@ function remoteSend(){
   if(bridgeSrc){try{bridgeSrc.postMessage(msg,bridgeOrigin);}catch(e){}}
   else if(window.opener){try{window.opener.postMessage(msg,'*');}catch(e){}}
 }
-function scheduleRemote(){if(!REMOTE)return;clearTimeout(remoteTimer);remoteTimer=setTimeout(remoteSend,1500);}
+// Position alene (timeupdate hvert 3. s) sendes højst hvert 30. s; bogmærker/loops/noter inden for 1,5 s.
+var remoteSig='';
+function scheduleRemote(){if(!REMOTE)return;var sig=JSON.stringify({b:st.bms,l:st.loops,n:st.notes,d:st.del});if(sig!==remoteSig){remoteSig=sig;clearTimeout(remoteTimer);remoteTimer=setTimeout(remoteSend,1500);}else if(!remoteTimer){remoteTimer=setTimeout(remoteSend,30000);}}
 function applyRemoteState(name,r){
   if(!r||cur<0||playlist[cur].name!==name)return;
   var before=JSON.stringify({b:st.bms,l:st.loops,n:st.notes});
