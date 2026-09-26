@@ -227,7 +227,7 @@ function play(i){
   if(i<0||i>=playlist.length)return;
   saveNow();flushSync();
   cur=i;var f=playlist[i];
-  if(f.remote&&!f.url){renderPl();document.getElementById('now').textContent=f.name;toast('Henter link fra Dropbox …');remoteWait=f.name;try{window.opener.postMessage({type:'rp-need',name:f.name},'*');}catch(e){toast('Ingen forbindelse til Bogreolen — åbn videoen derfra igen');}return;}
+  if(f.remote&&!f.url){renderPl();document.getElementById('now').textContent=f.name;remoteWait=f.name;if(remoteNeed(f.name))toast('Henter link fra Dropbox …');else toast('Ingen forbindelse til Bogreolen — åbn videoen derfra igen');return;}
   if(objURL){URL.revokeObjectURL(objURL);objURL=null;}
   if(f.remote){v.src=f.url;}else{objURL=URL.createObjectURL(f);v.src=objURL;}v.style.display='block';drop.style.display='none';document.getElementById('bar').style.display='flex';document.getElementById('bar2').style.display='flex';
   document.getElementById('now').textContent=f.name;
@@ -618,35 +618,59 @@ updateReopen();
     ikkeAabnet();
   }catch(e){ikkeAabnet();}
 })();
-// ── Bro til Bogreolen (webtilstand, 2026-09-26) ──
+// ── Bro til Bogreolen (webtilstand, 2026-09-26; omlagt samme aften) ──
+// Målt 26/9 20:15: artefakt-sandkassen giver IKKE den nye fane et window.opener
+// (rel=opener ignoreres), så playeren kan ikke selv melde sig. I stedet holder
+// Bogreolen håndtaget fra window.open og "banker på" (rp-hello) indtil playeren
+// svarer rp-ready via ev.source. Fald-tilbage uden kanal: hele nyttelasten i
+// URL-hash'en (#d=<base64url-JSON>, én video pr. åbning).
+var bridgeSrc=null,bridgeOrigin='*';
+function b64uDecode(s){s=s.replace(/-/g,'+').replace(/_/g,'/');while(s.length%4)s+='=';var bin=atob(s);var bytes=new Uint8Array(bin.length);for(var i=0;i<bin.length;i++)bytes[i]=bin.charCodeAt(i);return new TextDecoder().decode(bytes);}
+function remoteLoad(m){
+  playlist=m.items.map(function(it){return {name:it.name,remote:true,url:it.url||null};});
+  srtMap={};notesMap={};
+  (m.items||[]).forEach(function(it){var k=base(it.name);if(it.srt)srtMap[k]={name:it.srtName||(k+'.srt'),text:it.srt};if(Array.isArray(it.notes)&&it.notes.length)notesMap[k]=it.notes.map(function(n){return {name:n.name,text:n.text};});});
+  if(m.list)setTabTitle(m.list);
+  renderPl();
+  var start=0;if(m.start){for(var i=0;i<playlist.length;i++){if(playlist[i].name===m.start){start=i;break;}}}
+  play(start);
+}
+function remoteFile(m){
+  var idx=-1;for(var j=0;j<playlist.length;j++){if(playlist[j].name===m.name){idx=j;break;}}
+  if(idx<0)return;
+  if(m.url)playlist[idx].url=m.url;
+  var k=base(m.name);
+  if(m.srt)srtMap[k]={name:m.srtName||(k+'.srt'),text:m.srt};
+  if(Array.isArray(m.notes)&&m.notes.length)notesMap[k]=m.notes.map(function(n){return {name:n.name,text:n.text};});
+  if(m.error){toast('Bogreolen: '+m.error);remoteWait=null;return;}
+  if(remoteWait===m.name){remoteWait=null;play(idx);}
+}
+function remoteNeed(name){
+  if(bridgeSrc){try{bridgeSrc.postMessage({type:'rp-need',name:name},bridgeOrigin);return true;}catch(e){}}
+  if(window.opener){try{window.opener.postMessage({type:'rp-need',name:name},'*');return true;}catch(e){}}
+  return false;
+}
 (function(){
-  if(!/(^|[#&])bro=1(&|$)/.test(location.hash)||!window.opener)return;
+  var h=location.hash||'';
+  var isBro=/(^|[#&])bro=1(&|$)/.test(h),dm=h.match(/(^|[#&])d=([^&]+)/);
+  if(!isBro&&!dm)return;
   REMOTE=true;
   var sb=document.getElementById('syncb');if(sb)sb.style.display='none';
   var pk=document.querySelector('.pick');if(pk)pk.style.display='none';
-  var dr=document.getElementById('drop');if(dr){dr.innerHTML='<h2>Venter på Bogreolen …</h2><p>Playlisten kommer fra den fane, der åbnede playeren. Lukker du den, kan nye videoer ikke hentes.</p>';}
+  var dr=document.getElementById('drop');
+  if(dm){
+    try{var m=JSON.parse(b64uDecode(dm[2]));remoteLoad(m);}catch(e){if(dr)dr.innerHTML='<h2>Kunne ikke læse nyttelasten fra Bogreolen</h2><p>'+String(e.message||e).replace(/</g,'&lt;')+'</p>';}
+    return;
+  }
+  if(dr){dr.innerHTML='<h2>Venter på Bogreolen …</h2><p>Playlisten kommer fra den fane, der åbnede playeren. Lukker du den, kan nye videoer ikke hentes.</p>';}
   window.addEventListener('message',function(ev){
-    if(ev.source!==window.opener)return;
-    var m=ev.data||{};
-    if(m.type==='rp-load'&&Array.isArray(m.items)){
-      playlist=m.items.map(function(it){return {name:it.name,remote:true,url:it.url||null};});
-      srtMap={};notesMap={};
-      if(m.list)setTabTitle(m.list);
-      renderPl();
-      var start=0;if(m.start){for(var i=0;i<playlist.length;i++){if(playlist[i].name===m.start){start=i;break;}}}
-      play(start);
-    }else if(m.type==='rp-file'&&m.name){
-      var idx=-1;for(var j=0;j<playlist.length;j++){if(playlist[j].name===m.name){idx=j;break;}}
-      if(idx<0)return;
-      if(m.url)playlist[idx].url=m.url;
-      var k=base(m.name);
-      if(m.srt)srtMap[k]={name:m.srtName||(k+'.srt'),text:m.srt};
-      if(Array.isArray(m.notes)&&m.notes.length)notesMap[k]=m.notes.map(function(n){return {name:n.name,text:n.text};});
-      if(m.error){toast('Bogreolen: '+m.error);remoteWait=null;return;}
-      if(remoteWait===m.name){remoteWait=null;play(idx);}
-    }
+    var m=ev.data||{};if(!m||typeof m.type!=='string')return;
+    if(m.type==='rp-hello'){bridgeSrc=ev.source;bridgeOrigin=ev.origin||'*';try{ev.source.postMessage({type:'rp-ready'},bridgeOrigin);}catch(e){}return;}
+    if(bridgeSrc&&ev.source!==bridgeSrc&&ev.source!==window.opener)return;
+    if(m.type==='rp-load'&&Array.isArray(m.items))remoteLoad(m);
+    else if(m.type==='rp-file'&&m.name)remoteFile(m);
   });
-  try{window.opener.postMessage({type:'rp-ready'},'*');}catch(e){}
+  if(window.opener){try{window.opener.postMessage({type:'rp-ready'},'*');}catch(e){}}
 })();
 function tab(n,el){document.querySelectorAll('.tab').forEach(function(t){t.classList.remove('active');});el.classList.add('active');document.querySelectorAll('.pane').forEach(function(p,i){p.classList.toggle('active',i===n);});}
 </script></body></html>
