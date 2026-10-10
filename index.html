@@ -96,7 +96,7 @@ video.mirror{transform:scaleX(-1);}
 @media(max-width:900px){.main{flex-direction:column;overflow-y:auto;}body{overflow:auto;height:auto;}video{height:auto;width:100%;max-height:60vh;}.side{width:100%;border-left:none;border-top:1px solid var(--border);}.pane{max-height:50vh;}}
 </style></head><body>
 <div class="header">
-  <h1>Universal Player <span id="build" style="font-size:10px;font-weight:600;color:var(--text3);margin-left:6px;" title="Byggemærke — ses i sky-udgaven, så en forældet cache kan afsløres">2026-09-26g</span></h1><span id="now">Ingen video indlæst</span>
+  <h1>Universal Player <span id="build" style="font-size:10px;font-weight:600;color:var(--text3);margin-left:6px;" title="Byggemærke — ses i sky-udgaven, så en forældet cache kan afsløres">2026-10-10a</span></h1><span id="now">Ingen video indlæst</span>
   <div class="pick">
     <button class="btn" id="reopen" style="display:none;border-color:var(--accent2);" onclick="reopenDir()"></button>
     <button class="btn" onclick="pickDir()">📁 Vælg mappe</button>
@@ -744,7 +744,9 @@ function remoteNeed(name){
   if(dr){dr.innerHTML='<h2>Venter på Bogreolen …</h2><p>Playlisten kommer fra den fane, der åbnede playeren. Lukker du den, kan nye videoer ikke hentes.</p>';}
   window.addEventListener('message',function(ev){
     var m=ev.data||{};if(!m||typeof m.type!=='string')return;
-    if(m.type==='rp-hello'){bridgeSrc=ev.source;bridgeOrigin=ev.origin||'*';try{ev.source.postMessage({type:'rp-ready'},bridgeOrigin);}catch(e){}return;}
+    // rp-ready bærer fra 10/10 `loaded` + `cur`: Bogreolen banker på hele vinduets levetid (så en fane,
+    // Chrome har lagt i dvale og genindlæst, får sin playliste igen) og må kun sende rp-load, når intet er indlæst.
+    if(m.type==='rp-hello'){bridgeSrc=ev.source;bridgeOrigin=ev.origin||'*';try{ev.source.postMessage({type:'rp-ready',loaded:playlist.length>0,cur:(cur>=0&&playlist[cur])?playlist[cur].name:null},bridgeOrigin);}catch(e){}return;}
     if(bridgeSrc&&ev.source!==bridgeSrc&&ev.source!==window.opener)return;
     if(m.type==='rp-load'&&Array.isArray(m.items))remoteLoad(m);
     else if(m.type==='rp-file'&&m.name)remoteFile(m);
